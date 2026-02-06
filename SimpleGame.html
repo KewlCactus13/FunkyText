@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #1a1a1a;
+            font-family: Arial, sans-serif;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 400px;
+            background: #000;
+            border: 2px solid #fff;
+            overflow: hidden;
+        }
+
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 10px;
+            right: 0;
+            text-align: center;
+            color: #ffffff;
+            font-size: 28px;
+            z-index: 10;
+        }
+
+        .paddle {
+            position: absolute;
+            width: 10px;
+            height: 80px;
+            background: #fff;
+        }
+
+        .ballTrail {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+            background: rgba(255, 255, 255, 0.468);
+            transform: scale(1);
+            opacity: 1;
+            transition: transform 400ms linear, opacity 400ms linear;
+            will-change: transform, opacity;
+        }
+
+        #playerPaddle {
+            left: 20px;
+        }
+
+        #aiPaddle {
+            right: 20px;
+        }
+
+        #ball {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #ffffff;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="score">Player: 0 | AI: 0</div>
+        <div id="playerPaddle" class="paddle"></div>
+        <div id="aiPaddle" class="paddle"></div>
+        <div id="ball"></div>
+    </div>
+
+    <script>
+        // JavaScript code time babyyyy
+        const container = document.getElementById('gameContainer');
+        const scoreDisplay = document.getElementById('score');
+        const playerPaddle = document.getElementById('playerPaddle');
+        const aiPaddle = document.getElementById('aiPaddle');
+        const ball = document.getElementById('ball');
+
+        let playerScore = 0;
+        let aiScore = 0;
+        let ballX = 390;
+        let ballY = 190;
+        let ballSpeedX = 5;
+        let ballSpeedY = 5;
+        let playerY = 160;
+        let aiY = 160;
+        let trailTimer = 0;
+        let prevPlayerY = 160;
+        let prevAiY = 160;
+        const trailInterval = 2;
+        const maxTrails = 50;
+        const trailLifetime = 400;
+        const paddleSpeed = 5;
+        const ballSize = 10;
+        const paddleHeight = 80;
+        const paddleWidth = 10;
+        const maxSway = 15;
+
+        function updateScore() {
+            scoreDisplay.textContent = `Player: ${playerScore} | AI: ${aiScore}`;
+        }
+
+        document.addEventListener('mousemove', (e) => {
+            const rect = container.getBoundingClientRect();
+            const mouseY = e.clientY - rect.top;
+
+            if (mouseY > 0 && mouseY < container.clientHeight - paddleHeight) {
+                playerY = mouseY;
+            }
+        });
+
+        function moveAI() {
+            const aiCenter = aiY + paddleHeight / 2;
+            const ballCenter = ballY + ballSize / 2;
+
+            if (aiCenter < ballCenter - 35) {
+                aiY += paddleSpeed;
+            } else if (aiCenter > ballCenter + 35) {
+                aiY -= paddleSpeed;
+            }
+
+            if (aiY < 0) aiY = 0;
+            if (aiY > container.clientHeight - paddleHeight) {
+                aiY = container.clientHeight - paddleHeight;
+            }
+        }
+
+        function checkCollisions() {
+            if (ballX - ballSize <= 20 + paddleWidth &&
+                ballY >= playerY &&
+                ballY <= playerY + paddleHeight &&
+                ballSpeedX < 0) {
+                ballSpeedX = -ballSpeedX;
+                ballSpeedY += (Math.random() - 0.5) * 4;
+            }
+
+            if (ballX + ballSize >= container.clientWidth - 20 - paddleWidth &&
+                ballY >= aiY &&
+                ballY <= aiY + paddleHeight &&
+                ballSpeedX > 0) {
+                ballSpeedX = -ballSpeedX;
+                ballSpeedY += (Math.random() - 0.5) * 4;
+            }
+
+            if (ballY <= 0 || ballY + ballSize >= container.clientHeight) {
+                ballSpeedY = -ballSpeedY;
+                ballY = Math.max(0, Math.min(ballY, container.clientHeight - ballSize));
+            }
+
+            if (ballX < 0) {
+                aiScore++;
+                updateScore();
+                resetBall();
+            } else if (ballX + ballSize > container.clientWidth) {
+                playerScore++;
+                updateScore();
+                resetBall();
+            }
+        }
+
+        function resetBall() {
+            ballX = container.clientWidth / 2 - ballSize / 2;
+            ballY = container.clientHeight / 2 - ballSize / 2;
+            ballSpeedX = (Math.random() > 0.5 ? 1 : -1) * 5;
+            ballSpeedY = (Math.random() - 0.5) * 6;
+        }
+
+        function createTrail() {
+            if (container.querySelectorAll('.ballTrail').length >= maxTrails) return;
+            const t = document.createElement('div');
+            t.className = 'ballTrail';
+            t.style.left = (ballX + ballSize / 2 - 4) + 'px';
+            t.style.top = (ballY + ballSize / 2 - 4) + 'px';
+            container.appendChild(t);
+            requestAnimationFrame(() => {
+                t.style.transform = 'scale(2.0)';
+                t.style.opacity = '0';
+            });
+            setTimeout(() => t.remove(), trailLifetime + 50);
+        }
+
+        function gameLoop() {
+            ballX += ballSpeedX;
+            ballY += ballSpeedY;
+            trailTimer++;
+            if (trailTimer % trailInterval === 0) createTrail();
+            
+            checkCollisions();
+
+            moveAI();
+
+            const playerSway = (playerY - prevPlayerY) * 0.5;
+            const aiSway = (aiY - prevAiY) * 0.5;
+
+            const clampedPlayerSway = Math.max(-maxSway, Math.min(maxSway, playerSway));
+            const clampedAiSway = Math.max(-maxSway, Math.min(maxSway, aiSway));
+
+            playerPaddle.style.top = playerY + 'px';
+            playerPaddle.style.transform = `rotate(${-clampedPlayerSway}deg)`;
+
+            aiPaddle.style.top = aiY + 'px';
+            aiPaddle.style.transform = `rotate(${clampedAiSway}deg)`;
+
+            ball.style.left = ballX + 'px';
+            ball.style.top = ballY + 'px';
+
+            prevPlayerY = playerY;
+            prevAiY = aiY;
+
+            requestAnimationFrame(gameLoop);
+        }
+        gameLoop();
+</script>
