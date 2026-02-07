@@ -1,2 +1,2 @@
-# FunkyText
+# Pong :>
 sooo funky B)
