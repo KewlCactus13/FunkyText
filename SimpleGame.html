@@ -85,6 +85,11 @@
             border-radius: 50%;
         }
 
+        @keyframes smashPulse {
+            0% { transform: scale(0.3); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
     </style>
 </head>
 <body>
@@ -127,6 +132,24 @@
         let mouseX = 0;
         let mouseY = 0;
         const maxTilt = 10;
+
+        // smash thing
+        let smashCooldown = 0;
+        const smashCooldownMax = 1800;
+        const smashSpeed = 25;
+        const cooldownBar = document.createElement('div');
+        cooldownBar.id = 'smashCooldownBar';
+        cooldownBar.style.position = 'absolute';
+        cooldownBar.style.width = 'calc(100% - 20px)';
+        cooldownBar.style.height = '8px';
+        cooldownBar.style.background = '#555';
+        cooldownBar.style.bottom = '10px';
+        cooldownBar.style.left = '10px';
+        cooldownBar.style.right = '10px';
+        cooldownBar.style.borderRadius = '4px';
+        cooldownBar.style.overflow = 'hidden';
+        cooldownBar.style.zIndex = '5';
+        container.appendChild(cooldownBar);
 
         document.addEventListener('mousemove', (e) => {
             const rect = container.getBoundingClientRect();
@@ -195,6 +218,31 @@
                 setTimeout(() => p.remove(), 700);
             }
         }
+        function smash() {
+            if (smashCooldown > 0) return;
+
+            ballSpeedX = smashSpeed;
+            ballSpeedY = (Math.random() - 0.5) * 6;
+
+            const effect = document.createElement('div');
+            effect.style.position = 'absolute';
+            effect.style.width = '60px';
+            effect.style.height = '60px';
+            effect.style.border = '3px solid #ffff00';
+            effect.style.borderRadius = '50%';
+            effect.style.pointerEvents = 'none';
+            effect.style.left = (ballX - 30) + 'px';
+            effect.style.top = (ballY - 30) + 'px';
+            effect.style.animation = 'smashPulse 300ms ease-out forwards';
+            container.appendChild(effect);
+            setTimeout(() => effect.remove(), 350);
+
+            spawnParticles(ballX, ballY, '#ffff00', 15);
+
+            smashCooldown = smashCooldownMax;
+        }
+
+        container.addEventListener('click', smash);
 
         function checkCollisions() {
             if (ballX - ballSize <= 20 + paddleWidth &&
@@ -253,6 +301,12 @@
         function gameLoop() {
             ballX += ballSpeedX;
             ballY += ballSpeedY;
+            
+            if (smashCooldown > 0) smashCooldown--;
+            const cooldownPercent = (smashCooldownMax - smashCooldown) / smashCooldownMax * 100;
+            document.getElementById('smashCooldownBar').style.background = 
+              `linear-gradient(90deg, #ffffff 0%, #ffffff ${cooldownPercent}%, #555 ${cooldownPercent}%, #555 100%)`;
+            
             trailTimer++;
             if (trailTimer % trailInterval === 0) createTrail();
             
