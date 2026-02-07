@@ -23,6 +23,9 @@
             background: #000;
             border: 2px solid #fff;
             overflow: hidden;
+            transition: transform 100ms ease-out;
+            perspective: 1000px;
+            transform-style: preserve-3d;
         }
 
         #score {
@@ -56,6 +59,16 @@
             will-change: transform, opacity;
         }
 
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            pointer-events: none;
+            will-change: transform, opacity;
+            transition: transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 600ms linear;
+        }
+
         #playerPaddle {
             left: 20px;
         }
@@ -71,6 +84,7 @@
             background: #ffffff;
             border-radius: 50%;
         }
+
     </style>
 </head>
 <body>
@@ -109,18 +123,39 @@
         const paddleWidth = 10;
         const maxSway = 15;
 
-        function updateScore() {
-            scoreDisplay.textContent = `Player: ${playerScore} | AI: ${aiScore}`;
-        }
+        // Parallax
+        let mouseX = 0;
+        let mouseY = 0;
+        const maxTilt = 10;
 
         document.addEventListener('mousemove', (e) => {
             const rect = container.getBoundingClientRect();
-            const mouseY = e.clientY - rect.top;
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
 
-            if (mouseY > 0 && mouseY < container.clientHeight - paddleHeight) {
-                playerY = mouseY;
+            mouseX = e.clientX - rect.left - centerX;
+            mouseY = e.clientY - rect.top - centerY;
+
+            // Parallax tilt
+            const rotateY = (mouseX / centerX) * maxTilt;
+            const rotateX = -(mouseY / centerY) * maxTilt;
+            container.style.transform = `rotateX(${-rotateX}deg) rotateY(${rotateY}deg)`;
+
+            // Paddle movement
+            const paddleY = e.clientY - rect.top;
+            if (paddleY > 0 && paddleY < container.clientHeight - paddleHeight) {
+                playerY = paddleY;
             }
         });
+
+        // reset tilt when mouse leaves
+        document.addEventListener('mouseleave', () => {
+            container.style.transform = 'rotateX(0) rotateY(0)';
+        });
+
+        function updateScore() {
+            scoreDisplay.textContent = `Player: ${playerScore} | AI: ${aiScore}`;
+        }
 
         function moveAI() {
             const aiCenter = aiY + paddleHeight / 2;
@@ -135,6 +170,29 @@
             if (aiY < 0) aiY = 0;
             if (aiY > container.clientHeight - paddleHeight) {
                 aiY = container.clientHeight - paddleHeight;
+            }
+        }
+
+        function spawnParticles(x, y, color = '#ffffff', count = 12) {
+            for (let i = 0; i < count; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.background = color;
+                p.style.left = (x + ballSize / 2 - 2) + 'px';
+                p.style.top = (y + ballSize / 2 - 2) + 'px';
+                container.appendChild(p);
+
+                const angle = (Math.PI * 2 * i) / count;
+                const dist = 25 + Math.random() * 20;
+                const dx = Math.cos(angle) * dist;
+                const dy = Math.sin(angle) * dist;
+
+                requestAnimationFrame(() => {
+                    p.style.transform = `translate(${dx}px, ${dy}px)`;
+                    p.style.opacity = '0';
+                });
+
+                setTimeout(() => p.remove(), 700);
             }
         }
 
@@ -186,7 +244,7 @@
             t.style.top = (ballY + ballSize / 2 - 4) + 'px';
             container.appendChild(t);
             requestAnimationFrame(() => {
-                t.style.transform = 'scale(2.0)';
+                t.style.transform = 'scale(0.2)';
                 t.style.opacity = '0';
             });
             setTimeout(() => t.remove(), trailLifetime + 50);
